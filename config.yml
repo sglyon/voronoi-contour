@@ -1,0 +1,14 @@
+default:
+  path_png_map_raw: "data-raw/rtmLmp.png"
+  path_png_legend_raw: "data-raw/rtmLmpLegend.png"
+  path_kml_raw: "data-raw/rtmLmp.kml"
+  path_kml_pnt: "data/kml_pnt.csv"
+  path_color: "data/color.csv"
+  path_lmp_pnt: "data/lmp_pnt.csv"
+  path_pnt: "data/pnt.csv"
+  path_spdf_base_map: "data/spdf_base_map.rds"
+  path_sf_pnt: "data/sf_pntrds"
+  path_sf_tess_trim: "data/sf_tess_trim.rds"
+
+production:
+  
