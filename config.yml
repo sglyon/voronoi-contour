@@ -4,47 +4,42 @@ default:
   dir_data: "data"
   dir_viz: "figs"
   
-  # path_png_map_lmp_rtm_raw: "data-raw/rtmLmp.png"
-  path_png_map_spp_rtm_raw: "data-raw/rtmSpp.png"
-  path_png_map_spp_dam_raw: "data-raw/damSpp.png"
+  path_png_map_spp_rtm_raw: "data-raw/rtmSpp-20181115-071500.png"
+  path_png_map_spp_dam_raw: "data-raw/damSpp8-2018111-071500.png"
   path_png_legend_raw: "data-raw/rtmSppLegend.png"
   
-  # path_kml_raw: "data-raw/rtmSppPoints.kml"
-  path_kml_rmt_raw: "data-raw/rtmSppPoints.kml"
-  path_kml_dam_raw: "data-raw/damSppPoints7.kml"
+  path_kml_rtm_raw: "data-raw/rtmSppPoints-20181115-071500.kml"
+  path_kml_dam_raw: "data-raw/damSppPoints7-20181115-071500.kml"
   
-  # path_kml_pnt: "data/kml_pnt.csv"
-  path_kml_rtm_pnt: "data/kml_rtm_pnt.csv"
-  path_kml_dam_pnt: "data/kml_dam_pnt.csv"
+  path_kml_pnt_rtm: "data/kml_pnt_rtm-20181115-071500.csv"
+  path_kml_pnt_dam: "data/kml_pnt_dam-20181115-071500.csv"
   
   path_color: "data/color.csv"
   
-  # path_lmp_pnt: "data/lmp_pnt.csv"
   # url_spp_rtm_raw: "http://mis.ercot.com/misapp/GetReports.do?reportTypeId=12301&reportTitle=Settlement%20Point%20Prices%20at%20Resource%20Nodes,%20Hubs%20and%20Load%20Zones&showHTMLView=&mimicKey"
-  url_spp_rtm_raw: "http://mis.ercot.com/misdownload/servlets/mirDownload?mimic_duns=&doclookupId=636107978"
-  url_spp_rtm_raw: "http://mis.ercot.com/misdownload/servlets/mirDownload?mimic_duns=&doclookupId=636106806"
-  
+  # url_spp_rtm_raw: "http://mis.ercot.com/misdownload/servlets/mirDownload?mimic_duns=&doclookupId=636106806"
   
   # url_spp_dam_raw: "http://mis.ercot.com/misapp/GetReports.do?reportTypeId=12328&reportTitle=DAM%20Hourly%20LMPs&showHTMLView=&mimicKey"
-  url_spp_dam_raw: "http://mis.ercot.com/misdownload/servlets/mirDownload?mimic_duns=&doclookupId=636089735"
-  url_spp_dam_raw: "http://mis.ercot.com/misdownload/servlets/mirDownload?mimic_duns=&doclookupId=635949742"
+  # url_spp_dam_raw: "http://mis.ercot.com/misdownload/servlets/mirDownload?mimic_duns=&doclookupId=635949742"
   
-  path_spp_rtm_raw: "data-raw/cdr.00012301.0000000000000000.20181114.071704.SPPHLZNP6905_20181114_0715.csv"
+  path_spp_rtm_raw: "data-raw/cdr.00012301.0000000000000000.20181115.071703.SPPHLZNP6905_20181115_0715.csv"
   path_spp_dam_raw: "data-raw/cdr.00012331.0000000000000000.20181114.122757.DAMSPNP4190.csv"
   
-  # path_pnt: "data/pnt.csv"
-  path_pnt_rtm: "data/pnt_rtm.csv"
-  path_pnt_dam: "data/pnt_dam.csv"
+  path_pnt_rtm: "data/pnt_rtm-20181115-071500.csv"
+  path_pnt_dam: "data/pnt_dam-20181115-071500.csv"
 
-  path_spdf_base_map: "data/spdf_base_map.rds"
+  # path_spdf_base_map: "data/spdf_base_map.rds"
+  path_kml_bound: "data-raw/ercot_boundary.kml"
+  path_spdf_bound_poly: "data/spdf_bound_poly.rds"
   
-  # path_sf_pnt: "data/sf_pnt.rds"
-  path_sf_pnt_rtm: "data/sf_pnt_rtm.rds"
-  path_sf_pnt_dam: "data/sf_pnt_dam.rds"
+  path_sf_pnt_rtm: "data/sf_pnt_rtm-20181115-071500.rds"
+  path_sf_pnt_dam: "data/sf_pnt_dam-20181115-071500.rds"
   
-  # path_sf_poly_trim: "data/sf_poly_trim.rds"
-  path_sf_poly_rtm: "data/sf_poly_rtm.rds"
-  path_sf_poly_dam: "data/sf_poly_dam.rds"
+  path_sf_poly_rtm: "data/sf_poly_rtm-20181115-071500.rds"
+  path_sf_poly_dam: "data/sf_poly_dam-20181115-071500.rds"
+  
+  path_png_map_spp_rtm: "figs/rtmSpp-20181115-071500.png"
+  path_png_map_spp_dam: "figs/damSpp7-2018111-071500.png"
 
 production:
   

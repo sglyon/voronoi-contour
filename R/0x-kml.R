@@ -1,4 +1,33 @@
 
+path_kml_boundary <-
+  file.path("data-raw", "ercot_boundary.kml")
+kml_raw <-
+  path_kml_boundary %>%
+  tidykml::kml_read()
+bound <-
+  path_kml_boundary %>% 
+  xml2::read_xml() %>%
+  xml2::xml_children() %>%
+  xml2::xml_children() %>%
+  magrittr::extract(4) %>%
+  xml2::xml_children() %>%
+  magrittr::extract(3) %>%
+  xml2::xml_children() %>%
+  magrittr::extract(4) %>%
+  xml2::xml_children() %>%
+  magrittr::extract(4) %>%
+  xml2::xml_text() %>% 
+  # readLines()
+  str_split(",0\\s+", simplify = TRUE) %>% 
+  str_replace_all("[^(0-9|.|,|\\-)]","")  %>% 
+  str_split(",", simplify = TRUE) %>% 
+  as_tibble() %>% 
+  purrr::set_names(c("lng", "lat")) %>% 
+  mutate_all(funs(as.numeric)) %>% 
+  filter(!is.na(lng) & !is.na(lat))
+bound %>%
+  ggplot(aes(x = lng, y = lat)) +
+  geom_path()
 # method x1 ----
 # # Reference: https://gist.github.com/holstius/6631918.
 # read_kml <- function(file, layers) {

@@ -7,7 +7,7 @@ cnd <-
   )
 
 if(cnd) {
-  downloa_png <- function(url = NULL, path, mkt = c("rtm", "dam"), hour = NULL) {
+  download_png <- function(url = NULL, path, mkt = c("rtm", "dam"), hour = NULL) {
     if(is.null(url)) {
       mkt <- match.arg(mkt)
       if(mkt == "rtm") {
@@ -33,23 +33,36 @@ if(cnd) {
 
 
 # kml_pnt ----
-cnd <- file.exists(config$path_kml_pnt)
+cnd <- 
+  file.exists(config$path_kml_pnt_rtm) & file.exists(config$path_kml_pnt_dam)
 if(cnd) {
   kml_pnt <-
     config$path_kml_pnt %>% 
     teproj::import_path_cleanly()
 } else {
-  kml_pnt_raw <-
-    config$path_kml_raw %>%
-    tidykml::kml_points()
   
-  kml_pnt <-
-    kml_pnt_raw %>%
-    select(name, lat = latitude, lng = longitude) %>%
-    distinct(name, lat, lng) %>%
-    arrange(name)
-  kml_pnt
-  kml_pnt %>% teproj::export_path(config$path_kml_pnt)
+  convert_kml_raw_to_kml_pnt <-
+    function(path) {
+      kml_pnt_raw <-
+        config$path_kml_rtm_raw %>%
+        tidykml::kml_points()
+      kml_pnt <-
+        kml_pnt_raw %>%
+        select(name, lat = latitude, lng = longitude) %>%
+        distinct(name, lat, lng) %>%
+        arrange(name)
+    }
+  kml_pnt_rtm <-
+    config$path_kml_rtm_raw %>%
+    convert_kml_raw_to_kml_pnt()
+  kml_pnt_rtm
+  kml_pnt_dam <-
+    config$path_kml_dam_raw %>%
+    convert_kml_raw_to_kml_pnt()
+  kml_pnt_dam
+  kml_pnt_rtm %>% anti_join(kml_pnt_dam)
+  teproj::export_path(kml_pnt_rtm, config$path_kml_pnt_rtm)
+  teproj::export_path(kml_pnt_dam, config$path_kml_pnt_dam)
 }
 
 # color ----
@@ -117,10 +130,9 @@ if(cnd) {
       value = values_color
     )
   color
-  color %>% teproj::export_path(config$path_color)
+  teproj::export_path(color, config$path_color)
 }
 
-# TODO
 # spp_pnt ----
 cnd <- (file.exists(config$path_pnt_rtm) & file.exists(config$path_pnt_dam))
 if(cnd) {
@@ -131,86 +143,85 @@ if(cnd) {
     config$path_pnt_dam %>% 
     teproj::import_path_cleanly()
 } else {
-  cnd <- (file.exists(config$path_spp_rtm_raw) & file.exists(config$path_spp_dam_raw))
-  if(cnd) {
-    spp_rtm_raw <-
-      config$path_spp_rtm_raw %>% 
-      teproj::import_path_cleanly()
-    
-    spp_dam_raw <-
-      config$path_spp_dam_raw %>% 
-      teproj::import_path_cleanly()
-    # spp_rtm_raw %>% count(settlement_point_type)
-    spp_rtm <-
-      spp_rtm_raw %>% 
-      mutate_at(vars(delivery_date), funs(lubridate::mdy)) %>% 
-      mutate(
-        datetime = 
-          paste0(delivery_date, " ", sprintf("%02d", delivery_hour - 1L), ":", sprintf("%02d", (delivery_interval * 15L) %% 60L), ":00")
-      ) %>% 
-      mutate_at(vars(datetime), funs(lubridate::ymd_hms)) %>% 
-      select(datetime, matches("settlement_point")) %>% 
-      rename_all(funs(str_replace_all(., "settlement_point_", ""))) %>% 
-      filter(type %in% c("RN", "PUN", "PCCRN")) %>% 
-      select(datetime, name, spp = price)
-    spp_rtm
-    datetime_filt <- lubridate::ymd_hms("2018-11-13 07:00:00")
-    spp_dam <-
-      spp_dam_raw %>%
-      mutate_at(vars(hour_ending), funs(as.character)) %>% 
-      mutate_at(vars(delivery_date), funs(lubridate::mdy)) %>% 
-      mutate_at(vars(delivery_date), funs(if_else(is.na(hour_ending), . + lubridate::days(1), .))) %>% 
-      mutate_at(vars(hour_ending), funs(coalesce(., "00:00:00"))) %>% 
-      mutate(datetime = paste0(delivery_date, " ", hour_ending) %>% lubridate::ymd_hms()) %>% 
-      filter(datetime == datetime_filt) %>% 
-      select(datetime, matches("settlement_point")) %>% 
-      rename(name = settlement_point, spp = settlement_point_price) %>% 
-      select(datetime, name, spp)
-    spp_dam
-    # kml_pnt %>% anti_join(spp_dam)
-    # kml_pnt %>% anti_join(spp_rtm)
-    
-    add_lng_lat_cols <-
-      function(data) {
-        pnt <-
-          kml_pnt %>%
-          inner_join(data)
-        
-        pnt <-
-          pnt %>%
-          group_by(lng, lat) %>%
-          summarise_at(vars(spp), funs(max)) %>%
-          ungroup() %>% 
-          inner_join(pnt) %>% 
-          group_by(lng, lat) %>% 
-          filter(row_number() == 1L) %>% 
-          ungroup()
-        pnt <-
-          pnt %>%
-          mutate(dummy = 1L) %>% 
-          left_join(color %>% mutate(dummy = 1L), by = "dummy") %>% 
-          filter(spp <= value) %>% 
-          select(-dummy) %>% 
-          group_by(name, lng, lat) %>% 
-          arrange(value, .by_group = TRUE) %>% 
-          filter(row_number() == 1L) %>% 
-          ungroup() %>% 
-          select(lng, lat, value, name)
-      }
-    
-    pnt_rtm <-
-      spp_rtm %>% 
-      add_lng_lat_cols()
-    pnt_rtm
-    pnt_dam <-
-      spp_dam %>% 
-      add_lng_lat_cols()
-    pnt_dam
-    pnt_rtm %>% teproj::export_path(config$path_pnt_rtm)
-    pnt_dam %>% teproj::export_path(config$path_pnt_dam)
-  } else {
-    stop(call. = FALSE)
-  }
+  spp_rtm_raw <-
+    config$path_spp_rtm_raw %>% 
+    teproj::import_path_cleanly()
+  
+  spp_dam_raw <-
+    config$path_spp_dam_raw %>% 
+    teproj::import_path_cleanly()
+  
+  # spp_rtm_raw %>% count(settlement_point_type)
+  spp_rtm <-
+    spp_rtm_raw %>% 
+    mutate_at(vars(delivery_date), funs(lubridate::mdy)) %>% 
+    mutate(
+      datetime = 
+        paste0(delivery_date, " ", sprintf("%02d", delivery_hour - 1L), ":", sprintf("%02d", (delivery_interval * 15L) %% 60L), ":00")
+    ) %>% 
+    mutate_at(vars(datetime), funs(lubridate::ymd_hms)) %>% 
+    select(datetime, matches("settlement_point")) %>% 
+    rename_all(funs(str_replace_all(., "settlement_point_", ""))) %>% 
+    filter(type %in% c("RN", "PUN", "PCCRN")) %>% 
+    select(datetime, name, spp = price)
+  spp_rtm
+  
+  datetime_filt <- lubridate::ymd_hms("2018-11-15 08:00:00")
+  spp_dam <-
+    spp_dam_raw %>%
+    mutate_at(vars(hour_ending), funs(as.character)) %>% 
+    mutate_at(vars(delivery_date), funs(lubridate::mdy)) %>% 
+    mutate_at(vars(delivery_date), funs(if_else(is.na(hour_ending), . + lubridate::days(1), .))) %>% 
+    mutate_at(vars(hour_ending), funs(coalesce(., "00:00:00"))) %>% 
+    mutate(datetime = paste0(delivery_date, " ", hour_ending) %>% lubridate::ymd_hms()) %>% 
+    filter(datetime == datetime_filt) %>% 
+    select(datetime, matches("settlement_point")) %>% 
+    rename(name = settlement_point, spp = settlement_point_price) %>% 
+    select(datetime, name, spp)
+  spp_dam
+  
+  # Debugging...
+  kml_pnt_rtm %>% anti_join(spp_dam)
+  kml_pnt_dam %>% anti_join(spp_rtm)
+  
+  add_lng_lat_cols <-
+    function(spp, kml_pnt) {
+      pnt <-
+        kml_pnt %>%
+        inner_join(spp)
+      
+      pnt <-
+        pnt %>%
+        group_by(lng, lat) %>%
+        summarise_at(vars(spp), funs(max)) %>%
+        ungroup() %>% 
+        inner_join(pnt) %>% 
+        group_by(lng, lat) %>% 
+        filter(row_number() == 1L) %>% 
+        ungroup()
+      pnt <-
+        pnt %>%
+        mutate(dummy = 1L) %>% 
+        left_join(color %>% mutate(dummy = 1L), by = "dummy") %>% 
+        filter(spp <= value) %>% 
+        select(-dummy) %>% 
+        group_by(name, lng, lat) %>% 
+        arrange(value, .by_group = TRUE) %>% 
+        filter(row_number() == 1L) %>% 
+        ungroup() %>% 
+        select(lng, lat, value, name)
+    }
+  
+  pnt_rtm <-
+    spp_rtm %>% 
+    add_lng_lat_cols(kml_pnt_rtm)
+  pnt_rtm
+  pnt_dam <-
+    spp_dam %>% 
+    add_lng_lat_cols(kml_pnt_dam)
+  pnt_dam
+  teproj::export_path(pnt_rtm, config$path_pnt_rtm)
+  teproj::export_path(pnt_dam, config$path_pnt_dam)
 }
 
 # spdf_base_map ----
@@ -227,7 +238,86 @@ if(cnd) {
   spdf_base_map %>% write_rds(config$path_spdf_base_map)
 }
 
-# spdf_pnt_tess_trim ----
+# spdf_bound ----
+cnd <- file.exists(config$path_spdf_bound)
+if(cnd) {
+  spdf_bound <-
+    config$path_spdf_bound %>% 
+    read_rds()
+} else {
+  bound <-
+    config$path_kml_bound %>% 
+    xml2::read_xml() %>%
+    xml2::xml_children() %>%
+    xml2::xml_children() %>%
+    magrittr::extract(4) %>%
+    xml2::xml_children() %>%
+    magrittr::extract(3) %>%
+    xml2::xml_children() %>%
+    magrittr::extract(4) %>%
+    xml2::xml_children() %>%
+    magrittr::extract(4) %>%
+    xml2::xml_text() %>% 
+    # readLines()
+    str_split(",0\\s+", simplify = TRUE) %>% 
+    str_replace_all("[^(0-9|.|,|\\-)]","")  %>% 
+    str_split(",", simplify = TRUE) %>% 
+    as_tibble() %>% 
+    purrr::set_names(c("lng", "lat")) %>% 
+    mutate_all(funs(as.numeric)) %>% 
+    filter(!is.na(lng) & !is.na(lat)) %>% 
+    bind_rows(
+      .,
+      slice(., 1L)
+    )
+  bound_nontop <-
+    bound %>%
+    arrange(desc(row_number())) %>% 
+    slice(c(24:n()))
+
+  bound_state <-
+    teplot::get_map_data_state(state = "tx") %>%
+    as_tibble()
+  bound_top <-
+    bound_state %>%
+    slice(c(840:870)) %>% 
+    select(lng = long, lat)
+    
+  bound_fix <-
+    bind_rows(
+      bound_top,
+      bound_nontop
+    ) %>% 
+    bind_rows(
+      .,
+      slice(., 1L)
+    )
+  # bound_fix %>% count(lng, lat)
+  bound_fix %>%
+    ggplot(aes(lng, lat)) +
+    geom_path()
+  bound_poly <-
+    bound_fix %>% 
+    sp::Polygon() %>% 
+    list() %>% 
+    sp::Polygons(ID = "dummy") %>% 
+    list() %>%  
+    sp::SpatialPolygons()
+  spdf_bound_poly <-
+    sp::SpatialPolygonsDataFrame(
+      bound_poly, 
+      data.frame(state = c("texas"), row.names = c("dummy"))
+    )
+  sp::proj4string(spdf_bound_poly) <- sp::CRS("+init=epsg:4326")
+  # # NOTE: This is actually the same coordinate system. By transforming here,
+  # # removing some of the attributes to match with `spdf_pnt`.
+  # spdf_bound_poly <- sp::spTransform(spdf_bound_poly, sp::CRS("+proj=longlat +datum=WGS84"))
+  # spdf_bound_poly
+  readr::write_rds(spdf_bound_poly, config$path_spdf_bound_poly)
+  
+}
+
+# sf_poly ----
 cnd <-
   (
     file.exists(config$path_sf_pnt_rtm) & 
@@ -257,8 +347,10 @@ if(cnd) {
           pnt,
           match.ID = TRUE
         )
-      spdf_pnt@bbox <- spdf_base_map@bbox
-      sp::proj4string(spdf_pnt) <- sp::proj4string(spdf_base_map)
+      # spdf_pnt@bbox <- spdf_base_map@bbox
+      # sp::proj4string(spdf_pnt) <- sp::proj4string(spdf_base_map)
+      spdf_pnt@bbox <- spdf_bound_poly@bbox
+      sp::proj4string(spdf_pnt) <- sp::proj4string(spdf_bound_poly)
       spdf_pnt
     }
   
@@ -276,11 +368,12 @@ if(cnd) {
     spdf_pnt_dam %>%
     sf::st_as_sf()
   
-  sf_pnt_rtm %>% readr::write_rds(config$path_sf_pnt_rtm)
-  sf_pnt_dam %>% readr::write_rds(config$path_sf_pnt_dam)
+  readr::write_rds(sf_pnt_rtm, config$path_sf_pnt_rtm)
+  readr::write_rds(sf_pnt_dam, config$path_sf_pnt_dam)
   
   convert_spdf_pnt_to_sf_poly <-
     function(spdf_pnt) {
+      # spdf_pnt <- spdf_pnt_rtm
       th <-
         spdf_pnt %>% 
         maptools::as.ppp.SpatialPointsDataFrame() %>% 
@@ -289,10 +382,11 @@ if(cnd) {
       sp::proj4string(th) <- sp::proj4string(spdf_pnt)
       th_z <- sp::over(th, spdf_pnt)
       spdf_pnt_poly <- sp::SpatialPolygonsDataFrame(th, th_z)
-      spdf_pnt_poly_trim <- raster::intersect(spdf_base_map, spdf_pnt_poly)
+      # spdf_pnt_poly_trim <- raster::intersect(spdf_base_map, spdf_pnt_poly)
+      spdf_pnt_poly_trim <- raster::intersect(spdf_bound_poly, spdf_pnt_poly)
       sf_poly_trim <- spdf_pnt_poly_trim %>% sf::st_as_sf()
     }
-
+  
   sf_poly_rtm <-
     spdf_pnt_rtm %>%
     convert_spdf_pnt_to_sf_poly()
@@ -300,22 +394,22 @@ if(cnd) {
     spdf_pnt_dam %>%
     convert_spdf_pnt_to_sf_poly()
   
-  sf_poly_rtm %>% readr::write_rds(config$path_sf_poly_rtm)
-  sf_poly_dam %>% readr::write_rds(config$path_sf_poly_dam)
+  readr::write_rds(sf_poly_rtm, config$path_sf_poly_rtm)
+  readr::write_rds(sf_poly_dam, config$path_sf_poly_dam)
 }
 
 # viz_pnt ----
-tx_border <-
+bound_state <-
   teplot::get_map_data_state(state = "tx") %>%
   as_tibble()
-tx_county <-
+bound_county <-
   teplot::get_map_data_county(state = "tx") %>% 
   as_tibble()
 
 labs_fill <-
   color$value %>%
   scales::dollar() %>% 
-  paste0("<" , .)
+  paste0("<" , ., ".00")
 
 visualize_pnt <-
   function(sf_poly, sf_pnt, ...) {
@@ -336,17 +430,17 @@ visualize_pnt <-
       guides(
         fill = guide_legend(ncol = 1, reverse = TRUE)
       ) +
-      # geom_polygon(
-      #   data = tx_border,
-      #   aes(x = long, y = lat, group = group),
-      #   size = 1,
-      #   color = "black",
-      #   fill = NA
-      # ) +
       geom_polygon(
-        data = tx_county,
+        data = bound_county,
         aes(x = long, y = lat, group = group),
         size = 0.1,
+        color = "black",
+        fill = NA
+      ) +
+      geom_polygon(
+        data = bound_state,
+        aes(x = long, y = lat, group = group),
+        size = 1,
         color = "black",
         fill = NA
       ) +
@@ -361,44 +455,45 @@ visualize_pnt <-
       coord_sf(datum = NA) +
       teplot::theme_map() +
       theme(
-        panel.background = element_blank(),
-        legend.position = "right"
-      ) +
-      labs(
-        caption = "By Tony ElHabr."
+        legend.key.height = unit(0.55, "mm"),
+        legend.position = c(0.975, 0.05),
+        panel.background = element_blank()
       )
   }
+
 viz_pnt_rtm <-
   visualize_pnt(
     sf_poly = sf_poly_rtm,
     sf_pnt = sf_pnt_rtm
-  ) +
-  labs(
-    title = "ERCOT, Real-Time LMP Prices"
   )
 viz_pnt_rtm
+viz_pnt_rtm_banner <-
+  viz_pnt_rtm +
+  labs(
+    title = "ERCOT, Real-Time SPP Prices",
+    caption = "By Tony ElHabr."
+  )
 
 viz_pnt_dam <-
   visualize_pnt(
     sf_poly = sf_poly_dam,
     sf_pnt = sf_pnt_dam
-  ) +
-  labs(
-    title = "ERCOT, Day-Ahead LMP Prices"
   )
 viz_pnt_dam
+viz_pnt_dam +
+  theme(
+    legend.key.height = unit(0.55, "mm"),
+    legend.position = c(0.975, 0.05)
+  )
 
-.UNITS = "in"
-.HEIGHT = 8L
-.WIDTH = 8L
-save_viz_pnt <-
+export_viz_pnt <-
   function(x,
            file = deparse(substitute(x)),
            export = config$export_viz,
            dir = config$dir_viz,
-           units = .UNITS,
-           height = .HEIGHT,
-           width = .WIDTH,
+           units = "in",
+           height = 8L,
+           width = 8L,
            ...) {
     teproj::export_ext_png(
       x = x,
@@ -411,5 +506,116 @@ save_viz_pnt <-
     )
   }
 
-save_viz_pnt(viz_pnt_rtm)
-save_viz_pnt(viz_pnt_dam)
+export_viz_pnt(viz_pnt_rtm_banner)
+path_viz_pnt_rtm <- export_viz_pnt(viz_pnt_rtm)
+path_viz_pnt_dam <- export_viz_pnt(viz_pnt_dam)
+
+read_info <- function(x) {
+  x %>%
+    magick::image_read() %>%
+    magick::image_info()
+}
+
+read_append <- function(x) {
+  x %>%
+    magick::image_read() %>%
+    magick::image_append()
+}
+
+img_info <-
+  config$path_png_map_spp_rtm_raw %>%
+  read_info()
+img_info_legend <-
+  config$path_png_legend_raw %>%
+  read_info()
+h <- img_info %>% pluck("height")
+w <- img_info %>% pluck("width")
+h_legend <- img_info_legend %>% pluck("height")
+w_legend <- img_info_legend %>% pluck("width")
+
+h_diff <- h - h_legend
+bkgrd <-
+  magick::image_blank(
+    width = 1 * w + w_legend,
+    height = h,
+    col = "#FFFFFF"
+  )
+
+export_png_map <-
+  function(path_in, path_out = file.path(config$dir_viz, basename(path_in))) {
+    bkgrd %>%
+      magick::image_composite(
+        path_in %>%
+          read_append(),
+        offset = paste0("+", 0 * w, "+", 0 * h)
+      ) %>%
+      magick::image_composite(
+        config$path_png_legend_raw %>%
+          read_append(),
+        offset = paste0("+", 1 * w, "+", 0 + h_diff)
+      ) %>%
+      magick::image_write(path_out)
+    invisible(path_out)
+  }
+
+path_png_map_spp_rtm <- export_png_map(config$path_png_map_spp_rtm_raw)
+path_png_map_spp_dam <- export_png_map(config$path_png_map_spp_dam_raw)
+
+img_info1 <- path_viz_pnt_rtm %>% read_info()
+h1 <- img_info1 %>% pluck("height")
+w1 <- img_info1 %>% pluck("width")
+
+# img_info2 <- path_png_map_spp_rtm %>% read_info()
+# h2 <- img_info2 %>% pluck("height")
+# w2 <- img_info2 %>% pluck("width")
+# ratio_h <- h1 / h2
+# ratio_w <- w1 / w2
+# h2_resized <- h2 * ratio_h
+# w2_resized <- w2 * ratio_w
+
+bkgrd12 <-
+  magick::image_blank(
+    width = 2 * w1,
+    height = h1,
+    col = "#FFFFFF"
+  )
+
+export_png_map_compare <-
+  function(path_in1,
+           path_in2,
+           path_out =
+             file.path(config$dir_viz,
+                       paste0(tools::file_path_sans_ext(basename(path_in1)), "-compare.png"))) {
+    
+    img2_resized <-
+      path_in2 %>%
+      magick::image_read() %>%
+      # magick::image_resize(paste0(w2_resized, "x", h2_resized))
+      magick::image_resize(paste0(w1 * 0.85, "x", h1 * 0.85))
+    bkgrd12 %>%
+      magick::image_composite(
+        path_in1 %>%
+          read_append(),
+        offset = paste0("+", 0 * w1)
+      ) %>%
+      magick::image_composite(
+        img2_resized %>%
+          magick::image_append(),
+        offset = paste0("+", 1 * w1, "+", 1 * 300)
+      ) %>%
+      magick::image_write(path_out)
+    invisible(path_out) 
+  }
+
+path_viz_pnt_rtm_compare <-
+  export_png_map_compare(
+    path_in1 = path_viz_pnt_rtm,
+    path_in2 = path_png_map_spp_rtm
+  )
+
+path_viz_pnt_dam_compare <-
+  export_png_map_compare(
+    path_in1 = path_viz_pnt_dam,
+    path_in2 = path_png_map_spp_dam
+  )
+

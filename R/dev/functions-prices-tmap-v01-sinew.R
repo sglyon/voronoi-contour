@@ -84,14 +84,14 @@ convert_spointsdf_to_spolysdf_v2 <- function(sp) {
   # tile.list extracts the polygon data from the deldir computation
   vor_desc <- deldir::tile.list(deldir::deldir(sp@coords[, 1], sp@coords[, 2]))
   
-  lapply(1:(arules::length(vor_desc)), function(i) {
+  lapply(1:(length(vor_desc)), function(i) {
     # tile.list gets us the points for the polygons but we
     # still have to close them, hence the need for the rbind
-    tmp <- timeSeries::cbind(vor_desc[[i]]$x, vor_desc[[i]]$y)
-    tmp <- data.table::rbind(tmp, tmp[1, ])
+    tmp <- cbind(vor_desc[[i]]$x, vor_desc[[i]]$y)
+    tmp <- rbind(tmp, tmp[1, ])
     
     # now we can make the Polygon(s)
-    ggplot2::Polygons(gsubfn::list(sp::Polygon(tmp)), ID = i)
+   sp::Polygons(list(sp::Polygon(tmp)), ID = i)
   }) -> vor_polygons
   
   # hopefully the caller passed in good metadata!
