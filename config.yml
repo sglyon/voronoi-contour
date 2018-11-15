@@ -7,10 +7,16 @@ default:
   # path_png_map_lmp_rtm_raw: "data-raw/rtmLmp.png"
   path_png_map_spp_rtm_raw: "data-raw/rtmSpp.png"
   path_png_map_spp_dam_raw: "data-raw/damSpp.png"
-  path_png_legend_raw: "data-raw/rtmLmpLegend.png"
+  path_png_legend_raw: "data-raw/rtmSppLegend.png"
   
-  path_kml_raw: "data-raw/rtmLmp.kml"
-  path_kml_pnt: "data/kml_pnt.csv"
+  # path_kml_raw: "data-raw/rtmSppPoints.kml"
+  path_kml_rmt_raw: "data-raw/rtmSppPoints.kml"
+  path_kml_dam_raw: "data-raw/damSppPoints7.kml"
+  
+  # path_kml_pnt: "data/kml_pnt.csv"
+  path_kml_rtm_pnt: "data/kml_rtm_pnt.csv"
+  path_kml_dam_pnt: "data/kml_dam_pnt.csv"
+  
   path_color: "data/color.csv"
   
   # path_lmp_pnt: "data/lmp_pnt.csv"
@@ -23,8 +29,8 @@ default:
   url_spp_dam_raw: "http://mis.ercot.com/misdownload/servlets/mirDownload?mimic_duns=&doclookupId=636089735"
   url_spp_dam_raw: "http://mis.ercot.com/misdownload/servlets/mirDownload?mimic_duns=&doclookupId=635949742"
   
-  path_spp_rtm_raw: "data-raw/cdr.00012301.0000000000000000.20181113.064703.SPPHLZNP6905_20181113_0645.csv"
-  path_spp_dam_raw: "data-raw/cdr.00012331.0000000000000000.20181112.123220.DAMSPNP4190.csv"
+  path_spp_rtm_raw: "data-raw/cdr.00012301.0000000000000000.20181114.071704.SPPHLZNP6905_20181114_0715.csv"
+  path_spp_dam_raw: "data-raw/cdr.00012331.0000000000000000.20181114.122757.DAMSPNP4190.csv"
   
   # path_pnt: "data/pnt.csv"
   path_pnt_rtm: "data/pnt_rtm.csv"
