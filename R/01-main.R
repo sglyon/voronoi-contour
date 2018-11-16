@@ -36,15 +36,18 @@ if(cnd) {
 cnd <- 
   file.exists(config$path_kml_pnt_rtm) & file.exists(config$path_kml_pnt_dam)
 if(cnd) {
-  kml_pnt <-
-    config$path_kml_pnt %>% 
+  kml_pnt_rtm <-
+    config$path_kml_pnt_rtm %>% 
+    teproj::import_path_cleanly()
+  kml_pnt_dam <-
+    config$path_kml_pnt_dam %>% 
     teproj::import_path_cleanly()
 } else {
   
   convert_kml_raw_to_kml_pnt <-
     function(path) {
       kml_pnt_raw <-
-        config$path_kml_rtm_raw %>%
+        path %>%
         tidykml::kml_points()
       kml_pnt <-
         kml_pnt_raw %>%
@@ -134,13 +137,21 @@ if(cnd) {
 }
 
 # spp_pnt ----
-cnd <- (file.exists(config$path_pnt_rtm) & file.exists(config$path_pnt_dam))
+cnd <- 
+  (
+    file.exists(config$path_pnt_rtm) & 
+      file.exists(config$path_pnt_dam) & 
+      file.exists(config$path_pnt_rtm2dam)
+    )
 if(cnd) {
   pnt_rtm <-
     config$path_pnt_rtm %>% 
     teproj::import_path_cleanly()
   pnt_dam <-
     config$path_pnt_dam %>% 
+    teproj::import_path_cleanly()
+  pnt_rtm2dam <-
+    config$path_pnt_rtm2dam %>% 
     teproj::import_path_cleanly()
 } else {
   spp_rtm_raw <-
@@ -184,6 +195,13 @@ if(cnd) {
   kml_pnt_rtm %>% anti_join(spp_dam)
   kml_pnt_dam %>% anti_join(spp_rtm)
   
+  spp_rtm2dam <-
+    inner_join(
+      spp_rtm %>% select(-datetime) %>% rename(spp_rtm = spp),
+      spp_dam %>% select(-datetime) %>% rename(spp_dam = spp)
+    ) %>% 
+    mutate(spp = spp_rtm - spp_dam)
+  
   add_lng_lat_cols <-
     function(spp, kml_pnt) {
       pnt <-
@@ -199,8 +217,11 @@ if(cnd) {
         group_by(lng, lat) %>% 
         filter(row_number() == 1L) %>% 
         ungroup()
-      pnt <-
-        pnt %>%
+    }
+  
+  join_colors <-
+    function(pnt) {
+      pnt %>%
         mutate(dummy = 1L) %>% 
         left_join(color %>% mutate(dummy = 1L), by = "dummy") %>% 
         filter(spp <= value) %>% 
@@ -214,29 +235,38 @@ if(cnd) {
   
   pnt_rtm <-
     spp_rtm %>% 
-    add_lng_lat_cols(kml_pnt_rtm)
+    add_lng_lat_cols(kml_pnt_rtm) %>% 
+    join_colors()
   pnt_rtm
   pnt_dam <-
     spp_dam %>% 
-    add_lng_lat_cols(kml_pnt_dam)
+    add_lng_lat_cols(kml_pnt_dam) %>% 
+    join_colors()
   pnt_dam
+  
+  pnt_rtm2dam <-
+    spp_rtm2dam %>%
+    add_lng_lat_cols(kml_pnt_rtm)
+  pnt_rtm2dam
+  
   teproj::export_path(pnt_rtm, config$path_pnt_rtm)
   teproj::export_path(pnt_dam, config$path_pnt_dam)
+  teproj::export_path(pnt_rtm2dam, config$path_pnt_rtm2dam)
 }
 
-# spdf_base_map ----
-cnd <- file.exists(config$path_spdf_base_map)
-if(cnd) {
-  spdf_base_map <-
-    config$path_spdf_base_map %>% 
-    read_rds()
-} else {
-  z <- gzcon(url("http://colby.edu/~mgimond/Spatial/Data/texas.rds"))
-  spdf_base_map <- readRDS(z)
-  spdf_base_map <- sp::spTransform(spdf_base_map, sp::CRS("+proj=longlat +datum=WGS84"))
-  # spdf_base_map %>% teproj::export_path(config$path_spdf_base_map)
-  spdf_base_map %>% write_rds(config$path_spdf_base_map)
-}
+# # spdf_base_map ----
+# cnd <- file.exists(config$path_spdf_base_map)
+# if(cnd) {
+#   spdf_base_map <-
+#     config$path_spdf_base_map %>% 
+#     read_rds()
+# } else {
+#   z <- gzcon(url("http://colby.edu/~mgimond/Spatial/Data/texas.rds"))
+#   spdf_base_map <- readRDS(z)
+#   spdf_base_map <- sp::spTransform(spdf_base_map, sp::CRS("+proj=longlat +datum=WGS84"))
+#   # spdf_base_map %>% teproj::export_path(config$path_spdf_base_map)
+#   spdf_base_map %>% write_rds(config$path_spdf_base_map)
+# }
 
 # spdf_bound ----
 cnd <- file.exists(config$path_spdf_bound)
@@ -303,17 +333,17 @@ if(cnd) {
     sp::Polygons(ID = "dummy") %>% 
     list() %>%  
     sp::SpatialPolygons()
-  spdf_bound_poly <-
+  spdf_bound <-
     sp::SpatialPolygonsDataFrame(
       bound_poly, 
       data.frame(state = c("texas"), row.names = c("dummy"))
     )
-  sp::proj4string(spdf_bound_poly) <- sp::CRS("+init=epsg:4326")
+  sp::proj4string(spdf_bound) <- sp::CRS("+init=epsg:4326")
   # # NOTE: This is actually the same coordinate system. By transforming here,
   # # removing some of the attributes to match with `spdf_pnt`.
-  # spdf_bound_poly <- sp::spTransform(spdf_bound_poly, sp::CRS("+proj=longlat +datum=WGS84"))
-  # spdf_bound_poly
-  readr::write_rds(spdf_bound_poly, config$path_spdf_bound_poly)
+  # spdf_bound <- sp::spTransform(spdf_bound, sp::CRS("+proj=longlat +datum=WGS84"))
+  # spdf_bound
+  readr::write_rds(spdf_bound, config$path_spdf_bound)
   
 }
 
@@ -322,21 +352,30 @@ cnd <-
   (
     file.exists(config$path_sf_pnt_rtm) & 
       file.exists(config$path_sf_pnt_dam) & 
+      file.exists(config$path_sf_pnt_rtm2dam) & 
       file.exists(config$path_sf_poly_rtm) &
-      file.exists(config$path_sf_poly_dam)
+      file.exists(config$path_sf_poly_dam) &
+      file.exists(config$path_sf_poly_rtm2dam)
   )
 if(cnd) {
   sf_pnt_rtm <-
     config$path_sf_pnt_rtm %>% 
     teproj::import_path_cleanly()
-  sf_poly_rtm <-
-    config$path_sf_poly_rtm %>% 
-    teproj::import_path_cleanly()
   sf_pnt_dam <-
     config$path_sf_pnt_dam %>% 
     teproj::import_path_cleanly()
+  sf_pnt_rtm2dam <-
+    config$path_sf_pnt_rtm2dam %>% 
+    teproj::import_path_cleanly()
+  
+  sf_poly_rtm <-
+    config$path_sf_poly_rtm %>% 
+    teproj::import_path_cleanly()
   sf_poly_dam <-
     config$path_sf_poly_dam %>% 
+    teproj::import_path_cleanly()
+  sf_poly_rtm2dam <-
+    config$path_sf_poly_rtm2dam %>% 
     teproj::import_path_cleanly()
 } else {
   create_spdf <-
@@ -349,8 +388,8 @@ if(cnd) {
         )
       # spdf_pnt@bbox <- spdf_base_map@bbox
       # sp::proj4string(spdf_pnt) <- sp::proj4string(spdf_base_map)
-      spdf_pnt@bbox <- spdf_bound_poly@bbox
-      sp::proj4string(spdf_pnt) <- sp::proj4string(spdf_bound_poly)
+      spdf_pnt@bbox <- spdf_bound@bbox
+      sp::proj4string(spdf_pnt) <- sp::proj4string(spdf_bound)
       spdf_pnt
     }
   
@@ -360,6 +399,9 @@ if(cnd) {
   spdf_pnt_dam <-
     pnt_dam %>%
     create_spdf()
+  spdf_pnt_rtm2dam <-
+    pnt_rtm2dam %>%
+    create_spdf()
   
   sf_pnt_rtm <-
     spdf_pnt_rtm %>%
@@ -367,9 +409,13 @@ if(cnd) {
   sf_pnt_dam <-
     spdf_pnt_dam %>%
     sf::st_as_sf()
+  sf_pnt_rtm2dam <-
+    spdf_pnt_rtm2dam %>%
+    sf::st_as_sf()
   
   readr::write_rds(sf_pnt_rtm, config$path_sf_pnt_rtm)
   readr::write_rds(sf_pnt_dam, config$path_sf_pnt_dam)
+  readr::write_rds(sf_pnt_rtm2dam, config$path_sf_pnt_rtm2dam)
   
   convert_spdf_pnt_to_sf_poly <-
     function(spdf_pnt) {
@@ -383,7 +429,7 @@ if(cnd) {
       th_z <- sp::over(th, spdf_pnt)
       spdf_pnt_poly <- sp::SpatialPolygonsDataFrame(th, th_z)
       # spdf_pnt_poly_trim <- raster::intersect(spdf_base_map, spdf_pnt_poly)
-      spdf_pnt_poly_trim <- raster::intersect(spdf_bound_poly, spdf_pnt_poly)
+      spdf_pnt_poly_trim <- raster::intersect(spdf_bound, spdf_pnt_poly)
       sf_poly_trim <- spdf_pnt_poly_trim %>% sf::st_as_sf()
     }
   
@@ -393,9 +439,13 @@ if(cnd) {
   sf_poly_dam <-
     spdf_pnt_dam %>%
     convert_spdf_pnt_to_sf_poly()
+  sf_poly_rtm2dam <-
+    spdf_pnt_rtm2dam %>%
+    convert_spdf_pnt_to_sf_poly()
   
   readr::write_rds(sf_poly_rtm, config$path_sf_poly_rtm)
   readr::write_rds(sf_poly_dam, config$path_sf_poly_dam)
+  readr::write_rds(sf_poly_rtm2dam, config$path_sf_poly_rtm2dam)
 }
 
 # viz_pnt ----
@@ -406,15 +456,33 @@ bound_county <-
   teplot::get_map_data_county(state = "tx") %>% 
   as_tibble()
 
+add_bound_layers <-
+  function(viz) {
+    viz +
+      geom_polygon(
+        data = bound_county,
+        aes(x = long, y = lat, group = group),
+        size = 0.1,
+        color = "black",
+        fill = NA
+      ) +
+      geom_polygon(
+        data = bound_state,
+        aes(x = long, y = lat, group = group),
+        size = 1,
+        color = "black",
+        fill = NA
+      )
+  }
+
 labs_fill <-
   color$value %>%
   scales::dollar() %>% 
   paste0("<" , ., ".00")
 
 visualize_pnt <-
-  function(sf_poly, sf_pnt, ...) {
-    viz_pnt <-
-      ggplot() +
+  function(sf_poly, sf_pnt) {
+    ggplot() +
       geom_sf(
         data =
           sf_poly %>% 
@@ -430,6 +498,7 @@ visualize_pnt <-
       guides(
         fill = guide_legend(ncol = 1, reverse = TRUE)
       ) +
+      # add_bound_layers() +
       geom_polygon(
         data = bound_county,
         aes(x = long, y = lat, group = group),
@@ -456,7 +525,8 @@ visualize_pnt <-
       teplot::theme_map() +
       theme(
         legend.key.height = unit(0.55, "mm"),
-        legend.position = c(0.975, 0.05),
+        # legend.position = c(0.975, 0.1),
+        legend.position = "right",
         panel.background = element_blank()
       )
   }
@@ -467,11 +537,15 @@ viz_pnt_rtm <-
     sf_pnt = sf_pnt_rtm
   )
 viz_pnt_rtm
+
+lab_subtitle <- "11/15/2018 7:15 AM"
+lab_caption <- "By Tony ElHabr."
 viz_pnt_rtm_banner <-
   viz_pnt_rtm +
   labs(
-    title = "ERCOT, Real-Time SPP Prices",
-    caption = "By Tony ElHabr."
+    title = "Real-Time ERCOT Settlment Point Prices",
+    subtitle = lab_subtitle,
+    caption = lab_caption
   )
 
 viz_pnt_dam <-
@@ -480,11 +554,62 @@ viz_pnt_dam <-
     sf_pnt = sf_pnt_dam
   )
 viz_pnt_dam
-viz_pnt_dam +
+
+viz_pnt_rtm2dam <-
+  ggplot() +
+  geom_sf(
+    data =
+      sf_poly_rtm2dam,
+    aes(fill = value),
+    color = NA
+  ) +
+  scale_fill_viridis_c(option = "E") +
+  guides(
+    fill = guide_legend(reverse = TRUE)
+  ) +
+  # add_bound_layers() +
+  geom_polygon(
+    data = bound_county,
+    aes(x = long, y = lat, group = group),
+    size = 0.1,
+    color = "black",
+    fill = NA
+  ) +
+  geom_polygon(
+    data = bound_state,
+    aes(x = long, y = lat, group = group),
+    size = 1,
+    color = "black",
+    fill = NA
+  ) +
+  geom_sf(
+    data = sf_pnt_rtm2dam,
+    shape = 21,
+    size = 2,
+    stroke = 1,
+    color = "red",
+    fill = "black"
+  ) +
+  coord_sf(datum = NA) +
+  teplot::theme_map() +
   theme(
-    legend.key.height = unit(0.55, "mm"),
-    legend.position = c(0.975, 0.05)
+    # legend.key.height = unit(0.55, "mm"),
+    # legend.position = c(0.975, 0.1),
+    legend.position = "right",
+    panel.background = element_blank()
+  ) +
+  labs(
+    title = "(Real-Time - Day-Ahead) ERCOT Settlement Point Prices",
+    subtitle = lab_subtitle,
+    caption = lab_caption
   )
+viz_pnt_rtm2dam
+
+# viz_pnt_dam +
+#   theme(
+#     legend.key.height = unit(0.55, "mm"),
+#     legend.position = c(0.975, 0.05)
+#   )
 
 export_viz_pnt <-
   function(x,
@@ -493,7 +618,7 @@ export_viz_pnt <-
            dir = config$dir_viz,
            units = "in",
            height = 8L,
-           width = 8L,
+           width = 9L,
            ...) {
     teproj::export_ext_png(
       x = x,
@@ -502,11 +627,13 @@ export_viz_pnt <-
       dir = dir,
       units = units,
       height = height,
-      width = width
+      width = width, 
+      ...
     )
   }
 
 export_viz_pnt(viz_pnt_rtm_banner)
+export_viz_pnt(viz_pnt_rtm2dam)
 path_viz_pnt_rtm <- export_viz_pnt(viz_pnt_rtm)
 path_viz_pnt_dam <- export_viz_pnt(viz_pnt_dam)
 
@@ -575,7 +702,7 @@ w1 <- img_info1 %>% pluck("width")
 
 bkgrd12 <-
   magick::image_blank(
-    width = 2 * w1,
+    width = 1 * w1 + 0.85 * w1,
     height = h1,
     col = "#FFFFFF"
   )
@@ -591,7 +718,7 @@ export_png_map_compare <-
       path_in2 %>%
       magick::image_read() %>%
       # magick::image_resize(paste0(w2_resized, "x", h2_resized))
-      magick::image_resize(paste0(w1 * 0.85, "x", h1 * 0.85))
+      magick::image_resize(paste0(0.85 * w1, "x", 0.85 * h1))
     bkgrd12 %>%
       magick::image_composite(
         path_in1 %>%

@@ -9,7 +9,7 @@ default:
   path_png_legend_raw: "data-raw/rtmSppLegend.png"
   
   path_kml_rtm_raw: "data-raw/rtmSppPoints-20181115-071500.kml"
-  path_kml_dam_raw: "data-raw/damSppPoints7-20181115-071500.kml"
+  path_kml_dam_raw: "data-raw/damSpp7Points-20181115-071500.kml"
   
   path_kml_pnt_rtm: "data/kml_pnt_rtm-20181115-071500.csv"
   path_kml_pnt_dam: "data/kml_pnt_dam-20181115-071500.csv"
@@ -27,6 +27,7 @@ default:
   
   path_pnt_rtm: "data/pnt_rtm-20181115-071500.csv"
   path_pnt_dam: "data/pnt_dam-20181115-071500.csv"
+  path_pnt_rtm2dam: "data/pnt_rtm2dam-20181115-071500.csv"
 
   # path_spdf_base_map: "data/spdf_base_map.rds"
   path_kml_bound: "data-raw/ercot_boundary.kml"
@@ -34,12 +35,11 @@ default:
   
   path_sf_pnt_rtm: "data/sf_pnt_rtm-20181115-071500.rds"
   path_sf_pnt_dam: "data/sf_pnt_dam-20181115-071500.rds"
+  path_sf_pnt_rtm2dam: "data/sf_pnt_rtm2dam-20181115-071500.rds"
   
   path_sf_poly_rtm: "data/sf_poly_rtm-20181115-071500.rds"
   path_sf_poly_dam: "data/sf_poly_dam-20181115-071500.rds"
-  
-  path_png_map_spp_rtm: "figs/rtmSpp-20181115-071500.png"
-  path_png_map_spp_dam: "figs/damSpp7-2018111-071500.png"
+  path_sf_poly_rtm2dam: "data/sf_poly_rtm2dam-20181115-071500.rds"
 
 production:
   
