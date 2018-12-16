@@ -9,9 +9,8 @@ The `figs/` directory also contains some of the visualizations in the post.
 
 # Highlights
 
-![](figs/viz_pnt_rtm-banner.png)
+![](figs/viz_pnt_rtm_banner.png)
 
-![](figs/viz_pnt_rtm-compare.png)
-
+![](figs/viz_pnt_rtm_compare.png)
 
 ![](figs/viz_pnt_rtm2dam.png)

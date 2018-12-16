@@ -712,7 +712,7 @@ export_png_map_compare <-
            path_in2,
            path_out =
              file.path(config$dir_viz,
-                       paste0(tools::file_path_sans_ext(basename(path_in1)), "-compare.png"))) {
+                       paste0(tools::file_path_sans_ext(basename(path_in1)), "_compare.png"))) {
     
     img2_resized <-
       path_in2 %>%

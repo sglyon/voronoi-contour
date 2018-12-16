@@ -1,0 +1,13 @@
+
+# Introduction
+
+See my blog posts (to be linked here) for the full write-up. The `figs/`
+directory also contains some of the visualizations in the post.
+
+# Highlights
+
+![](figs/viz_pnt_rtm_banner.png)
+
+![](figs/viz_pnt_rtm_compare.png)
+
+![](figs/viz_pnt_rtm2dam.png)
